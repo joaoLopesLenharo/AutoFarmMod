@@ -137,22 +137,30 @@ public class HarvestSystem {
             return isTreeMature(world, chunk, plantPos, plant, species);
         }
 
-        // 2. Crop maturity: Native ECS FarmingBlock component
+        // 2. Crop maturity via Hytale Native Block Gathering config
+        // In Hytale, crops ONLY have a non-null Gathering.Harvest in their final (mature) stage.
+        // Stage 0 (seeds), Stage 1, Stage 2, and Stage 3 do not have HarvestingDropType.
+        if (currentType.getGathering() != null && currentType.getGathering().getHarvest() != null) {
+            return true;
+        }
+
+        // 3. Crop maturity: Native ECS FarmingBlock component
         Holder<ChunkStore> holder = chunk.getBlockComponentHolder(plantPos.x, plantPos.y, plantPos.z);
         if (holder != null) {
             FarmingBlock farming = holder.getComponent(FarmingBlock.getComponentType());
             if (farming != null) {
-                if (farming.getGrowthProgress() >= 1.0f) {
-                    return true;
-                }
                 String stage = farming.getCurrentStageSet();
                 if (stage != null && (stage.equalsIgnoreCase("StageFinal") || stage.equalsIgnoreCase("Harvested"))) {
+                    return true;
+                }
+                int finalStage = getFinalStageIndex(species != null ? species.getBlockId() : currentType.getId());
+                if (farming.getGrowthProgress() >= (float) finalStage) {
                     return true;
                 }
             }
         }
 
-        // 3. BlockType name convention
+        // 4. BlockType name convention (e.g. Plant_Crop_Wheat_StageFinal)
         String typeId = currentType.getId();
         if (typeId != null) {
             String lower = typeId.toLowerCase(Locale.ROOT);
@@ -161,9 +169,9 @@ public class HarvestSystem {
             }
         }
 
-        // 4. Tick fallback threshold for agricultural crops
-        long elapsed = currentTick - plant.getPlantedAtTick();
-        return elapsed >= maturityTicksThreshold;
+        // The crop is still growing naturally (Seed / Stage 1 / Stage 2 / Stage 3).
+        // It must NOT be harvested until it reaches the final stage!
+        return false;
     }
 
     /**

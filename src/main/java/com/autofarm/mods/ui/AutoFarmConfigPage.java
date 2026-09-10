@@ -33,9 +33,11 @@ public class AutoFarmConfigPage extends CustomUIPage {
 
         String selectedFace = farm.getSelectedChestFace();
         Vector3i chestPos = ChestLinkSystem.findAdjacentChest(world, farm);
+        boolean hasWater = world == null || com.autofarm.mods.systems.TerraformSystem.hasWaterUnderneath(world, farm.getPosition());
+        String waterStatus = hasWater ? " [ÁGUA: OK]" : " [ALERTA: Falta água abaixo da máquina!]";
 
-        String status = "Face Ativa: " + selectedFace + 
-                (chestPos != null ? " [BAÚ CONECTADO: " + chestPos.x + ", " + chestPos.y + ", " + chestPos.z + "]" : " [NENHUM BAÚ ENCONTRADO]");
+        String status = "Face: " + selectedFace + waterStatus + 
+                (chestPos != null ? " [BAÚ: " + chestPos.x + ", " + chestPos.y + ", " + chestPos.z + "]" : " [NENHUM BAÚ ENCONTRADO]");
         commands.set("#ActiveFaceInfo.Text", status);
 
         // Update each face label and bind activation events

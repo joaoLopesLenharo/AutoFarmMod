@@ -60,8 +60,8 @@ public class PlantingSystem {
                 return false;
             }
         } else if (species.isTree()) {
-            // Trees need dirt/grass and clearance, no tilling needed
-            if (!TerraformSystem.isEligibleForTree(world, soilPos, farmId)) {
+            // Trees need dirt/grass, spacing, and vertical clearance
+            if (!TerraformSystem.isEligibleForTree(world, soilPos, farmId, null, chestPos)) {
                 // Refund sapling back into chest
                 ChestLinkSystem.deposit(world, chestPos, new com.hypixel.hytale.server.core.inventory.ItemStack(seedItem, 1));
                 return false;
@@ -97,6 +97,7 @@ public class PlantingSystem {
 
     /**
      * Scans and executes planting actions for crops and trees.
+     * Capped at maximum water puddle irrigation radius (4 blocks).
      */
     public static int processPlantingCycle(World world, AutoFarmBlockComponent farm, long currentTick, int maxBatch) {
         if (world == null || farm == null) {
@@ -119,8 +120,9 @@ public class PlantingSystem {
         int plantedCount = 0;
 
         Vector3i origin = farm.getPosition();
-        int range = farm.getRange();
-        int vRange = farm.getVerticalRange();
+        // Maximum space around is strictly limited to what the water puddle underneath can irrigate (4 blocks)
+        int range = Math.min(farm.getRange() > 0 ? farm.getRange() : 4, 4);
+        int vRange = Math.min(farm.getVerticalRange() > 0 ? farm.getVerticalRange() : 4, 4);
         int waterProximity = farm.getWaterProximityMax();
 
         for (int r = 1; r <= range && plantedCount < remainingAllowance; r++) {
@@ -142,9 +144,9 @@ public class PlantingSystem {
                         Vector3i plantPos = new Vector3i(x, y + 1, z);
                         if (plantPos.equals(origin) || plantPos.equals(chestPos)) continue;
                         
-                        // Check eligibility for either crop (tilled/near water) or tree (dirt/clearance)
-                        boolean eligibleCrop = TerraformSystem.isEligibleSoil(world, soilCandidate, waterProximity, farmId);
-                        boolean eligibleTree = TerraformSystem.isEligibleForTree(world, soilCandidate, farmId);
+                        // Check eligibility for either crop (tilled/within water radius) or tree (spacing/clearance)
+                        boolean eligibleCrop = TerraformSystem.isEligibleSoil(world, soilCandidate, waterProximity, farmId, origin);
+                        boolean eligibleTree = TerraformSystem.isEligibleForTree(world, soilCandidate, farmId, origin, chestPos);
 
                         if (eligibleCrop || eligibleTree) {
                             boolean success = plantCrop(world, soilCandidate, farmId, chestPos, currentTick, eligibleCrop, eligibleTree);

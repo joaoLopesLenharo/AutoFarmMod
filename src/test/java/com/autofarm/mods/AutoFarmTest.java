@@ -27,8 +27,8 @@ public class AutoFarmTest {
 
         Assertions.assertEquals(farmId, farm.getFarmId());
         Assertions.assertEquals(pos, farm.getPosition());
-        Assertions.assertEquals(64, farm.getRange());
-        Assertions.assertEquals(8, farm.getVerticalRange());
+        Assertions.assertEquals(4, farm.getRange());
+        Assertions.assertEquals(4, farm.getVerticalRange());
         Assertions.assertEquals(4, farm.getWaterProximityMax());
         Assertions.assertEquals(32, farm.getMaxActivePlantsPerFarm());
 
@@ -138,17 +138,17 @@ public class AutoFarmTest {
     public void testAutoFarmConfigDefaultsAndJson() {
         AutoFarmConfig config = new AutoFarmConfig();
         Assertions.assertEquals(40, config.scanIntervalTicks);
-        Assertions.assertEquals(64, config.horizontalRange);
-        Assertions.assertEquals(8, config.verticalRange);
+        Assertions.assertEquals(4, config.horizontalRange);
+        Assertions.assertEquals(4, config.verticalRange);
         Assertions.assertEquals(4, config.waterProximityMax);
         Assertions.assertEquals(64, config.maxActivePlantsPerFarm);
 
         String json = config.toJson();
-        Assertions.assertTrue(json.contains("\"horizontalRange\": 64"));
+        Assertions.assertTrue(json.contains("\"horizontalRange\": 4"));
 
         AutoFarmConfig parsed = new AutoFarmConfig();
         parsed.parseSimpleJson(json);
-        Assertions.assertEquals(64, parsed.horizontalRange);
+        Assertions.assertEquals(4, parsed.horizontalRange);
         Assertions.assertEquals(4, parsed.waterProximityMax);
     }
 
@@ -357,5 +357,33 @@ public class AutoFarmTest {
 
         farm.setSelectedChestFace("NORTH");
         Assertions.assertNull(ChestLinkSystem.findAdjacentChest(null, farm));
+    }
+
+    @Test
+    public void testWaterUnderneathRequirementNullSafety() {
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.hasWaterUnderneath(null, null));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.hasWaterUnderneath(null, new Vector3i(0, 60, 0)));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isWaterAt(null, 0, 59, 0));
+    }
+
+    @Test
+    public void testCropMaturityStrictnessRejectsGrowingCrops() {
+        // Must return false and not prematurely harvest when chunk/state is null or immature
+        Assertions.assertFalse(com.autofarm.mods.systems.HarvestSystem.isMature(null, null, null, 1000L, 600L));
+    }
+
+    @Test
+    public void testTreeSpacingAndClearanceRules() {
+        UUID farmId = UUID.randomUUID();
+        Vector3i farmPos = new Vector3i(0, 60, 0);
+        Vector3i chestPos = new Vector3i(0, 60, 1);
+
+        // Spot immediately adjacent to machine (e.g. 1, 59, 0) must be rejected
+        Vector3i adjacentSoil = new Vector3i(1, 59, 0);
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleForTree(null, adjacentSoil, farmId, farmPos, chestPos));
+
+        // Spot at distance >= 2 without world loaded safely returns false
+        Vector3i farSoil = new Vector3i(3, 59, 3);
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleForTree(null, farSoil, farmId, farmPos, chestPos));
     }
 }

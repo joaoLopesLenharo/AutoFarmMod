@@ -11,8 +11,8 @@ public class AutoFarmConfig {
     private static final String CONFIG_FILE = "config/autofarm.json";
 
     public int scanIntervalTicks = 40;
-    public int horizontalRange = 64;
-    public int verticalRange = 8;
+    public int horizontalRange = 4; // Limited to maximum water puddle irrigation radius (4 blocks)
+    public int verticalRange = 4;
     public int waterProximityMax = 4;
     public int maxActivePlantsPerFarm = 64;
     public int maxPlantBatchPerCycle = 4;

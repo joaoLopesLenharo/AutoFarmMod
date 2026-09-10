@@ -103,24 +103,31 @@ public class FarmScanSystem extends EntityTickingSystem<EntityStore> {
             return;
         }
 
-        // 2. Run Harvest Cycle
+        // 2. Check for water puddle directly underneath the machine
+        boolean hasWater = world == null || TerraformSystem.hasWaterUnderneath(world, farmPos);
+        if (!hasWater && currentTick % (interval * 5) == 0) {
+            System.out.println("[AutoFarm-CYCLE] Farm " + farmId + " at " + farmPos + " is IDLE (aguardando poça d'água diretamente abaixo da máquina para irrigação).");
+        }
+
+        // 3. Run Harvest Cycle (harvests only truly mature crops and fully grown trees)
         int harvested = 0;
         if (world != null) {
             harvested = HarvestSystem.processHarvestCycle(world, store, buffer, farm, currentTick);
         }
 
-        // 3. Run Planting & Terraforming Cycle
+        // 4. Run Planting & Terraforming Cycle (requires water puddle underneath to irrigate)
         int planted = 0;
-        if (world != null) {
+        if (world != null && hasWater) {
             planted = PlantingSystem.processPlantingCycle(world, farm, currentTick, config.maxPlantBatchPerCycle);
         }
 
-        // 4. Status summary
+        // 5. Status summary
         int activePlants = AutoFarmRegistry.countActivePlantsForFarm(farmId);
         if (harvested > 0 || planted > 0 || currentTick % (interval * 5) == 0) {
             System.out.println("[AutoFarm-CYCLE] Farm " + farmId + " status: " 
                     + activePlants + "/" + farm.getMaxActivePlantsPerFarm() + " active plants | "
-                    + "Harvested: " + harvested + " | Planted: " + planted + " | Chest: " + linkedChest);
+                    + "Harvested: " + harvested + " | Planted: " + planted + " | Chest: " + linkedChest
+                    + " | Water: " + (hasWater ? "OK" : "MISSING UNDER MACHINE"));
         }
     }
 }

@@ -34,8 +34,8 @@ public class AutoFarmBlockComponent implements Component<EntityStore> {
     private int posX;
     private int posY;
     private int posZ;
-    private int range = 64;
-    private int verticalRange = 8;
+    private int range = 4; // Capped at water puddle irrigation radius (4 blocks)
+    private int verticalRange = 4;
     private int scanIntervalTicks = 100; // ~5 seconds at 20 ticks/sec
     private int waterProximityMax = 4;
     private int maxActivePlantsPerFarm = 32;
