@@ -1,0 +1,169 @@
+$C = "../Common.ui";
+$Sounds = "../Sounds.ui";
+
+$C.@PageOverlay {
+  LayoutMode: Middle;
+
+  $C.@DecoratedContainer {
+    Anchor: (Width: 620);
+
+    #Title {
+      $C.@Title {
+        @Text = "Configuração do AutoFarm";
+      }
+    }
+
+    #Content {
+      Padding: (Vertical: 20, Horizontal: 25);
+
+      Group #StatusBox {
+        Anchor: (Bottom: 14);
+        LayoutMode: Top;
+
+        Label #StatusTitle {
+          Text: "Conexão com o Baú (o baú deve estar encostado no bloco):";
+          Style: (RenderBold: true, TextColor: #e3a857, FontSize: 15);
+        }
+
+        Label #ActiveFaceInfo {
+          Text: "Face Ativa: AUTO";
+          Style: (RenderBold: true, TextColor: #5dade2, FontSize: 14);
+          Anchor: (Top: 4);
+        }
+      }
+
+      Group #FacesList {
+        LayoutMode: Top;
+
+        Group #RowUp {
+          Anchor: (Height: 38, Bottom: 6);
+          LayoutMode: Left;
+          Background: (TexturePath: "../Common/ContainerPanelPatch.png", Border: 4);
+          Padding: (Horizontal: 10);
+
+          Label #FaceUpLabel {
+            Text: "Cima (+Y): Vazio";
+            Style: (RenderBold: true, VerticalAlignment: Center, TextColor: #ffffff, FontSize: 14);
+            FlexWeight: 3;
+          }
+
+          $C.@SmallSecondaryTextButton #BtnFaceUp {
+            Text: "Selecionar";
+            Anchor: (Width: 100);
+          }
+        }
+
+        Group #RowDown {
+          Anchor: (Height: 38, Bottom: 6);
+          LayoutMode: Left;
+          Background: (TexturePath: "../Common/ContainerPanelPatch.png", Border: 4);
+          Padding: (Horizontal: 10);
+
+          Label #FaceDownLabel {
+            Text: "Baixo (-Y): Vazio";
+            Style: (RenderBold: true, VerticalAlignment: Center, TextColor: #ffffff, FontSize: 14);
+            FlexWeight: 3;
+          }
+
+          $C.@SmallSecondaryTextButton #BtnFaceDown {
+            Text: "Selecionar";
+            Anchor: (Width: 100);
+          }
+        }
+
+        Group #RowNorth {
+          Anchor: (Height: 38, Bottom: 6);
+          LayoutMode: Left;
+          Background: (TexturePath: "../Common/ContainerPanelPatch.png", Border: 4);
+          Padding: (Horizontal: 10);
+
+          Label #FaceNorthLabel {
+            Text: "Norte (-Z): Vazio";
+            Style: (RenderBold: true, VerticalAlignment: Center, TextColor: #ffffff, FontSize: 14);
+            FlexWeight: 3;
+          }
+
+          $C.@SmallSecondaryTextButton #BtnFaceNorth {
+            Text: "Selecionar";
+            Anchor: (Width: 100);
+          }
+        }
+
+        Group #RowSouth {
+          Anchor: (Height: 38, Bottom: 6);
+          LayoutMode: Left;
+          Background: (TexturePath: "../Common/ContainerPanelPatch.png", Border: 4);
+          Padding: (Horizontal: 10);
+
+          Label #FaceSouthLabel {
+            Text: "Sul (+Z): Vazio";
+            Style: (RenderBold: true, VerticalAlignment: Center, TextColor: #ffffff, FontSize: 14);
+            FlexWeight: 3;
+          }
+
+          $C.@SmallSecondaryTextButton #BtnFaceSouth {
+            Text: "Selecionar";
+            Anchor: (Width: 100);
+          }
+        }
+
+        Group #RowEast {
+          Anchor: (Height: 38, Bottom: 6);
+          LayoutMode: Left;
+          Background: (TexturePath: "../Common/ContainerPanelPatch.png", Border: 4);
+          Padding: (Horizontal: 10);
+
+          Label #FaceEastLabel {
+            Text: "Leste (+X): Vazio";
+            Style: (RenderBold: true, VerticalAlignment: Center, TextColor: #ffffff, FontSize: 14);
+            FlexWeight: 3;
+          }
+
+          $C.@SmallSecondaryTextButton #BtnFaceEast {
+            Text: "Selecionar";
+            Anchor: (Width: 100);
+          }
+        }
+
+        Group #RowWest {
+          Anchor: (Height: 38, Bottom: 12);
+          LayoutMode: Left;
+          Background: (TexturePath: "../Common/ContainerPanelPatch.png", Border: 4);
+          Padding: (Horizontal: 10);
+
+          Label #FaceWestLabel {
+            Text: "Oeste (-X): Vazio";
+            Style: (RenderBold: true, VerticalAlignment: Center, TextColor: #ffffff, FontSize: 14);
+            FlexWeight: 3;
+          }
+
+          $C.@SmallSecondaryTextButton #BtnFaceWest {
+            Text: "Selecionar";
+            Anchor: (Width: 100);
+          }
+        }
+      }
+
+      Group #ActionsGroup {
+        LayoutMode: Center;
+        Anchor: (Top: 6);
+
+        $C.@TextButton #BtnFaceAuto {
+          @Sounds = $Sounds.@ButtonsLight;
+          @Anchor = (Right: 6);
+          Text: "Modo AUTO";
+          FlexWeight: 1;
+        }
+
+        $C.@SecondaryTextButton #BtnClose {
+          @Sounds = $Sounds.@ButtonsCancel;
+          @Anchor = (Left: 6);
+          Text: "Fechar";
+          FlexWeight: 1;
+        }
+      }
+    }
+  }
+}
+
+$C.@BackButton {}
