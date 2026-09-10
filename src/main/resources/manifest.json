@@ -1,0 +1,19 @@
+{
+  "Group": "com.autofarm.mods",
+  "Name": "AutoFarm",
+  "Version": "1.0.0",
+  "Main": "com.autofarm.mods.AutoFarmMod",
+  "Description": "Autonomous farming block for Hytale.",
+  "Authors": [
+    {
+      "Name": "joao_"
+    }
+  ],
+  "ServerVersion": "*",
+  "Dependencies": {},
+  "OptionalDependencies": {},
+  "LoadBefore": {},
+  "DisabledByDefault": false,
+  "IncludesAssetPack": true,
+  "SubPlugins": []
+}

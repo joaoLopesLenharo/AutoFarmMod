@@ -1,0 +1,9 @@
+{
+  "scanIntervalTicks": 40,
+  "horizontalRange": 64,
+  "verticalRange": 8,
+  "waterProximityMax": 4,
+  "maxActivePlantsPerFarm": 64,
+  "maxPlantBatchPerCycle": 4,
+  "maturityTicksThreshold": 600
+}
