@@ -1,6 +1,7 @@
 package com.autofarm.mods.systems;
 
 import com.autofarm.mods.AutoFarmRegistry;
+import com.autofarm.mods.components.AutoPlantedComponent;
 import com.autofarm.mods.components.TilledByFarmComponent;
 import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
@@ -25,30 +26,14 @@ public class TerraformSystem {
             for (int dz = -maxProximity; dz <= maxProximity; dz++) {
                 if (dx * dx + dz * dz > maxProximity * maxProximity) continue;
 
-                // Check same level and 1 block below/above
-                for (int dy = -1; dy <= 1; dy++) {
+                // Check from 3 blocks below up to 2 blocks above
+                for (int dy = -3; dy <= 2; dy++) {
                     int x = originX + dx;
                     int y = originY + dy;
                     int z = originZ + dz;
 
-                    if (y < 0 || y > 255) continue;
-
-                    long chunkIndex = ChunkUtil.indexChunkFromBlock(x, z);
-                    WorldChunk chunk = world.getChunkIfLoaded(chunkIndex);
-                    if (chunk == null) continue;
-
-                    // Check fluid id
-                    if (chunk.getFluidId(x, y, z) != 0) {
+                    if (isWaterAt(world, x, y, z)) {
                         return true;
-                    }
-
-                    // Check block type name
-                    BlockType type = chunk.getBlockType(x, y, z);
-                    if (type != null && type.getId() != null) {
-                        String id = type.getId().toLowerCase(Locale.ROOT);
-                        if (id.contains("water") || id.contains("fluid_water")) {
-                            return true;
-                        }
                     }
                 }
             }
@@ -57,13 +42,28 @@ public class TerraformSystem {
     }
 
     /**
-     * Checks if there is a water puddle/source directly underneath the AutoFarm machine.
-     * The machine requires water at (farmPos.x, farmPos.y - 1, farmPos.z) or (farmPos.x, farmPos.y - 2, farmPos.z).
+     * Checks if there is a water puddle/source directly underneath or around the base of the machine.
+     * Searches in a 5x5 footprint up to 3 blocks down, with fallback to 4-block water proximity.
      */
     public static boolean hasWaterUnderneath(World world, Vector3i farmPos) {
         if (world == null || farmPos == null) return false;
-        return isWaterAt(world, farmPos.x, farmPos.y - 1, farmPos.z)
-                || isWaterAt(world, farmPos.x, farmPos.y - 2, farmPos.z);
+
+        // 1. Direct check under and around the machine base (dx, dz in [-2, 2], dy in [-3, 0])
+        for (int dy = 0; dy >= -3; dy--) {
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    int x = farmPos.x + dx;
+                    int y = farmPos.y + dy;
+                    int z = farmPos.z + dz;
+                    if (isWaterAt(world, x, y, z)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // 2. Fallback to general water proximity (within maximum irrigation radius 4)
+        return isNearWater(world, farmPos.x, farmPos.y, farmPos.z, 4);
     }
 
     public static boolean isWaterAt(World world, int x, int y, int z) {
@@ -72,17 +72,42 @@ public class TerraformSystem {
         WorldChunk chunk = world.getChunkIfLoaded(chunkIndex);
         if (chunk == null) return false;
 
+        // Check fluid id
         try {
             if (chunk.getFluidId(x, y, z) != 0) {
                 return true;
             }
         } catch (Throwable ignored) {}
 
-        BlockType type = chunk.getBlockType(x, y, z);
-        if (type != null && type.getId() != null) {
-            String id = type.getId().toLowerCase(Locale.ROOT);
-            return id.contains("water") || id.contains("fluid_water");
-        }
+        // Check fluid level
+        try {
+            if (chunk.getFluidLevel(x, y, z) > 0) {
+                return true;
+            }
+        } catch (Throwable ignored) {}
+
+        // Check block type and material properties
+        try {
+            BlockType type = chunk.getBlockType(x, y, z);
+            if (type != null) {
+                if (type.getId() != null) {
+                    String id = type.getId().toLowerCase(Locale.ROOT);
+                    if (id.contains("water") || id.contains("fluid")) {
+                        return true;
+                    }
+                }
+                if (type.getGroup() != null && type.getGroup().toLowerCase(Locale.ROOT).contains("water")) {
+                    return true;
+                }
+                if (type.getBlockSoundSetId() != null && type.getBlockSoundSetId().toLowerCase(Locale.ROOT).contains("water")) {
+                    return true;
+                }
+                if (type.getBlockParticleSetId() != null && type.getBlockParticleSetId().toLowerCase(Locale.ROOT).contains("water")) {
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {}
+
         return false;
     }
 
@@ -149,11 +174,10 @@ public class TerraformSystem {
      * Checks if a soil position is eligible for planting a sapling/tree.
      * Criteria:
      * - Soil is dirt/grass (does not need tilling)
-     * - Not adjacent to machine or chest (distance >= 2 blocks)
-     * - Space between trees: at least 3 blocks apart from other trees/saplings
-     * - Free of surrounding walls/blocks in 3x3 area
-     * - High vertical clearance (at least 7 blocks above sapling)
+     * - Spot above (y+1) is empty air or soft foliage
      * - Not claimed by another farm or already planted
+     * - Spacing from other trees: at least 2 blocks from any other planted tree
+     * - Vertical clearance: at least 4 blocks of open air above sapling (y+2 to y+5)
      */
     public static boolean isEligibleForTree(World world, Vector3i soilPos, UUID farmId) {
         return isEligibleForTree(world, soilPos, farmId, null, null);
@@ -162,25 +186,19 @@ public class TerraformSystem {
     public static boolean isEligibleForTree(World world, Vector3i soilPos, UUID farmId, Vector3i farmPos, Vector3i chestPos) {
         if (world == null || soilPos == null) return false;
 
-        // 1. Must not be directly adjacent to machine or chest (needs at least 2 blocks distance)
-        if (farmPos != null) {
-            int distFarm = Math.max(Math.abs(soilPos.x - farmPos.x), Math.abs(soilPos.z - farmPos.z));
-            if (distFarm < 2) return false;
-        }
-        if (chestPos != null) {
-            int distChest = Math.max(Math.abs(soilPos.x - chestPos.x), Math.abs(soilPos.z - chestPos.z));
-            if (distChest < 2) return false;
-        }
+        // Must not be the machine or chest position
+        if (farmPos != null && soilPos.x == farmPos.x && soilPos.z == farmPos.z) return false;
+        if (chestPos != null && soilPos.x == chestPos.x && soilPos.z == chestPos.z) return false;
 
         int soilY = soilPos.y;
-        if (soilY + 8 > 255) return false;
+        if (soilY + 5 > 255) return false;
 
         long chunkIdx = ChunkUtil.indexChunkFromBlock(soilPos.x, soilPos.z);
         WorldChunk chunk = world.getChunkIfLoaded(chunkIdx);
         if (chunk == null) return false;
 
-        // Soil must be dirt or grass
-        BlockType soilType = chunk.getBlockType(soilPos.x, soilPos.y, soilPos.z);
+        // Soil must be dirt, grass, or soil
+        BlockType soilType = chunk.getBlockType(soilPos.x, soilY, soilPos.z);
         if (soilType == null || soilType.getId() == null) return false;
         String lowerId = soilType.getId().toLowerCase(Locale.ROOT);
         if (!lowerId.contains("dirt") && !lowerId.contains("grass") && !lowerId.contains("soil")) return false;
@@ -197,59 +215,28 @@ public class TerraformSystem {
             return false;
         }
 
-        // 2. Minimum Tree Spacing: at least 3 blocks apart from other planted crops/trees
+        // Tree Spacing: at least 2 blocks apart from other planted TREES (agricultural crops don't block trees)
         if (farmId != null) {
             var farmCrops = AutoFarmRegistry.getCropsForFarm(farmId);
             for (var entry : farmCrops.entrySet()) {
-                Vector3i otherPos = entry.getKey();
-                int dx = Math.abs(soilPos.x - otherPos.x);
-                int dz = Math.abs(soilPos.z - otherPos.z);
-                if (Math.max(dx, dz) < 3) {
-                    return false; // Too close to another planted tree
-                }
-            }
-        }
-
-        // 3. Scan nearby blocks in chunk within radius 3 for existing tree trunks or saplings
-        for (int dx = -3; dx <= 3; dx++) {
-            for (int dz = -3; dz <= 3; dz++) {
-                if (dx == 0 && dz == 0) continue;
-                for (int dy = 0; dy <= 4; dy++) {
-                    int cx = soilPos.x + dx;
-                    int cy = soilY + 1 + dy;
-                    int cz = soilPos.z + dz;
-                    long cIdx = ChunkUtil.indexChunkFromBlock(cx, cz);
-                    WorldChunk cChunk = world.getChunkIfLoaded(cIdx);
-                    if (cChunk == null) continue;
-                    BlockType b = cChunk.getBlockType(cx, cy, cz);
-                    if (b != null && b.getId() != null) {
-                        String bId = b.getId().toLowerCase(Locale.ROOT);
-                        if (bId.contains("trunk") || bId.contains("sapling")) {
-                            return false; // Existing tree too close!
-                        }
+                AutoPlantedComponent otherPlant = entry.getValue();
+                com.autofarm.mods.catalog.PlantSpecies otherSpecies = com.autofarm.mods.catalog.PlantCatalog.resolve(otherPlant.getPlantType());
+                if (otherSpecies != null && otherSpecies.isTree()) {
+                    Vector3i otherPos = entry.getKey();
+                    int dx = Math.abs(soilPos.x - otherPos.x);
+                    int dz = Math.abs(soilPos.z - otherPos.z);
+                    if (Math.max(dx, dz) < 2) {
+                        return false; // Too close to another planted tree
                     }
                 }
             }
         }
 
-        // 4. Vertical clearance: at least 7 blocks of open air above sapling (y+2 to y+8)
-        for (int dy = 2; dy <= 8; dy++) {
+        // Vertical clearance: at least 4 blocks of open air above sapling (y+2 to y+5)
+        for (int dy = 2; dy <= 5; dy++) {
             BlockType above = chunk.getBlockType(soilPos.x, soilY + dy, soilPos.z);
-            if (above != null && !isAir(above.getId())) {
+            if (above != null && !isAirOrFoliage(above.getId())) {
                 return false;
-            }
-        }
-
-        // 5. Horizontal clearance: surrounding blocks at y+1 and y+2 must not be solid walls
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                if (dx == 0 && dz == 0) continue;
-                for (int dy = 1; dy <= 2; dy++) {
-                    BlockType side = chunk.getBlockType(soilPos.x + dx, soilY + dy, soilPos.z + dz);
-                    if (side != null && !isAirOrFoliage(side.getId())) {
-                        return false; // Blocked by adjacent wall/obstacle
-                    }
-                }
             }
         }
 

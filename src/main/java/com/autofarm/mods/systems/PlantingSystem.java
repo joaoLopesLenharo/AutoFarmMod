@@ -29,10 +29,15 @@ public class PlantingSystem {
      * Registers ownership in AutoFarmRegistry.
      */
     public static boolean plantCrop(World world, Vector3i soilPos, UUID farmId, Vector3i chestPos, long currentTick) {
-        return plantCrop(world, soilPos, farmId, chestPos, currentTick, true, true);
+        return plantCrop(world, soilPos, farmId, null, chestPos, currentTick, true, true);
     }
 
     public static boolean plantCrop(World world, Vector3i soilPos, UUID farmId, Vector3i chestPos, long currentTick,
+                                   boolean eligibleCrop, boolean eligibleTree) {
+        return plantCrop(world, soilPos, farmId, null, chestPos, currentTick, eligibleCrop, eligibleTree);
+    }
+
+    public static boolean plantCrop(World world, Vector3i soilPos, UUID farmId, Vector3i origin, Vector3i chestPos, long currentTick,
                                    boolean eligibleCrop, boolean eligibleTree) {
         if (world == null || soilPos == null || farmId == null || chestPos == null) {
             return false;
@@ -61,7 +66,7 @@ public class PlantingSystem {
             }
         } else if (species.isTree()) {
             // Trees need dirt/grass, spacing, and vertical clearance
-            if (!TerraformSystem.isEligibleForTree(world, soilPos, farmId, null, chestPos)) {
+            if (!TerraformSystem.isEligibleForTree(world, soilPos, farmId, origin, chestPos)) {
                 // Refund sapling back into chest
                 ChestLinkSystem.deposit(world, chestPos, new com.hypixel.hytale.server.core.inventory.ItemStack(seedItem, 1));
                 return false;
@@ -100,6 +105,11 @@ public class PlantingSystem {
      * Capped at maximum water puddle irrigation radius (4 blocks).
      */
     public static int processPlantingCycle(World world, AutoFarmBlockComponent farm, long currentTick, int maxBatch) {
+        boolean hasWater = farm != null && TerraformSystem.hasWaterUnderneath(world, farm.getPosition());
+        return processPlantingCycle(world, farm, currentTick, maxBatch, hasWater);
+    }
+
+    public static int processPlantingCycle(World world, AutoFarmBlockComponent farm, long currentTick, int maxBatch, boolean hasWater) {
         if (world == null || farm == null) {
             return 0;
         }
@@ -144,12 +154,13 @@ public class PlantingSystem {
                         Vector3i plantPos = new Vector3i(x, y + 1, z);
                         if (plantPos.equals(origin) || plantPos.equals(chestPos)) continue;
                         
-                        // Check eligibility for either crop (tilled/within water radius) or tree (spacing/clearance)
-                        boolean eligibleCrop = TerraformSystem.isEligibleSoil(world, soilCandidate, waterProximity, farmId, origin);
+                        // Check eligibility for crops (requires hasWater + valid soil within radius)
+                        // Trees do NOT require water (trees grow on dirt/grass with proper spacing and vertical clearance)
+                        boolean eligibleCrop = hasWater && TerraformSystem.isEligibleSoil(world, soilCandidate, waterProximity, farmId, origin);
                         boolean eligibleTree = TerraformSystem.isEligibleForTree(world, soilCandidate, farmId, origin, chestPos);
 
                         if (eligibleCrop || eligibleTree) {
-                            boolean success = plantCrop(world, soilCandidate, farmId, chestPos, currentTick, eligibleCrop, eligibleTree);
+                            boolean success = plantCrop(world, soilCandidate, farmId, origin, chestPos, currentTick, eligibleCrop, eligibleTree);
                             if (success) {
                                 plantedCount++;
                             }

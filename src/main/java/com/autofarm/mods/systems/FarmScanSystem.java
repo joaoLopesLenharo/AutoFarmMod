@@ -103,10 +103,10 @@ public class FarmScanSystem extends EntityTickingSystem<EntityStore> {
             return;
         }
 
-        // 2. Check for water puddle directly underneath the machine
+        // 2. Check for water puddle directly underneath or around the machine
         boolean hasWater = world == null || TerraformSystem.hasWaterUnderneath(world, farmPos);
         if (!hasWater && currentTick % (interval * 5) == 0) {
-            System.out.println("[AutoFarm-CYCLE] Farm " + farmId + " at " + farmPos + " is IDLE (aguardando poça d'água diretamente abaixo da máquina para irrigação).");
+            System.out.println("[AutoFarm-CYCLE] Farm " + farmId + " at " + farmPos + " is awaiting water puddle for crops (tree planting remains active).");
         }
 
         // 3. Run Harvest Cycle (harvests only truly mature crops and fully grown trees)
@@ -115,10 +115,11 @@ public class FarmScanSystem extends EntityTickingSystem<EntityStore> {
             harvested = HarvestSystem.processHarvestCycle(world, store, buffer, farm, currentTick);
         }
 
-        // 4. Run Planting & Terraforming Cycle (requires water puddle underneath to irrigate)
+        // 4. Run Planting & Terraforming Cycle
+        // Crops require water puddle irrigation; tree planting proceeds independently
         int planted = 0;
-        if (world != null && hasWater) {
-            planted = PlantingSystem.processPlantingCycle(world, farm, currentTick, config.maxPlantBatchPerCycle);
+        if (world != null) {
+            planted = PlantingSystem.processPlantingCycle(world, farm, currentTick, config.maxPlantBatchPerCycle, hasWater);
         }
 
         // 5. Status summary
@@ -127,7 +128,7 @@ public class FarmScanSystem extends EntityTickingSystem<EntityStore> {
             System.out.println("[AutoFarm-CYCLE] Farm " + farmId + " status: " 
                     + activePlants + "/" + farm.getMaxActivePlantsPerFarm() + " active plants | "
                     + "Harvested: " + harvested + " | Planted: " + planted + " | Chest: " + linkedChest
-                    + " | Water: " + (hasWater ? "OK" : "MISSING UNDER MACHINE"));
+                    + " | Water: " + (hasWater ? "OK" : "AWAITING (trees active)"));
         }
     }
 }
