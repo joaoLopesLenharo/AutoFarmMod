@@ -126,6 +126,11 @@ public class TerraformSystem {
     public static boolean isEligibleSoil(World world, Vector3i soilPos, int maxWaterProximity, UUID farmId, Vector3i farmPos) {
         if (world == null || soilPos == null) return false;
 
+        // Soil must strictly be 1 block below the farm machine (same layer as the water puddle)
+        if (farmPos != null && soilPos.y != farmPos.y - 1) {
+            return false;
+        }
+
         // Soil must be within maximum water puddle irrigation radius (4 blocks)
         if (farmPos != null) {
             int dx = Math.abs(soilPos.x - farmPos.x);
@@ -135,9 +140,18 @@ public class TerraformSystem {
             }
         }
 
-        // Check above is Air
+        // 1. Water check: Water puddle blocks MUST NEVER be replaced or converted to soil!
+        if (isWaterAt(world, soilPos.x, soilPos.y, soilPos.z)) {
+            return false;
+        }
+
+        // 2. Check spot above (plantPos = soilPos.y + 1)
         int aboveY = soilPos.y + 1;
         if (aboveY > 255) return false;
+
+        if (isWaterAt(world, soilPos.x, aboveY, soilPos.z)) {
+            return false; // Cannot plant crop inside water
+        }
 
         long chunkIdx = ChunkUtil.indexChunkFromBlock(soilPos.x, soilPos.z);
         WorldChunk chunk = world.getChunkIfLoaded(chunkIdx);
@@ -145,7 +159,7 @@ public class TerraformSystem {
 
         BlockType aboveType = chunk.getBlockType(soilPos.x, aboveY, soilPos.z);
         if (aboveType != null && !isAirOrFoliage(aboveType.getId())) {
-            return false;
+            return false; // Obstacle or solid block above
         }
 
         // Check not already planted
@@ -160,20 +174,20 @@ public class TerraformSystem {
             return false; // Claimed by another farm
         }
 
+        // 3. Soil block check: MUST be genuine dirt, grass, or already tilled soil
+        // NEVER replace pathways, gravel, sand, clay, bricks, stone, wood, etc.
         BlockType soilType = chunk.getBlockType(soilPos.x, soilPos.y, soilPos.z);
         if (soilType == null || soilType.getId() == null) return false;
 
-        String lowerId = soilType.getId().toLowerCase(Locale.ROOT);
-        boolean isAlreadyTilled = lowerId.contains("tilled");
-        boolean isTillableDirt = lowerId.contains("dirt") || lowerId.contains("grass") || lowerId.contains("soil");
-
-        return isAlreadyTilled || isTillableDirt;
+        return isTillableSoilOrTilled(soilType.getId());
     }
 
     /**
      * Checks if a soil position is eligible for planting a sapling/tree.
      * Criteria:
+     * - Soil is strictly 1 block below the machine (farmPos.y - 1)
      * - Soil is dirt/grass (does not need tilling)
+     * - Not water, pathways, stone, bricks or non-soil blocks
      * - Spot above (y+1) is empty air or soft foliage
      * - Not claimed by another farm or already planted
      * - Spacing from other trees: at least 2 blocks from any other planted tree
@@ -186,24 +200,40 @@ public class TerraformSystem {
     public static boolean isEligibleForTree(World world, Vector3i soilPos, UUID farmId, Vector3i farmPos, Vector3i chestPos) {
         if (world == null || soilPos == null) return false;
 
+        // Tree soil must also strictly be 1 block below the machine
+        if (farmPos != null && soilPos.y != farmPos.y - 1) {
+            return false;
+        }
+
         // Must not be the machine or chest position
         if (farmPos != null && soilPos.x == farmPos.x && soilPos.z == farmPos.z) return false;
         if (chestPos != null && soilPos.x == chestPos.x && soilPos.z == chestPos.z) return false;
 
+        // Never plant on water!
+        if (isWaterAt(world, soilPos.x, soilPos.y, soilPos.z)) {
+            return false;
+        }
+
         int soilY = soilPos.y;
         if (soilY + 5 > 255) return false;
+
+        // Above spot cannot be water
+        if (isWaterAt(world, soilPos.x, soilY + 1, soilPos.z)) {
+            return false;
+        }
 
         long chunkIdx = ChunkUtil.indexChunkFromBlock(soilPos.x, soilPos.z);
         WorldChunk chunk = world.getChunkIfLoaded(chunkIdx);
         if (chunk == null) return false;
 
-        // Soil must be dirt, grass, or soil
+        // Soil must be genuine dirt or grass (not pathways, bricks, stone, etc.)
         BlockType soilType = chunk.getBlockType(soilPos.x, soilY, soilPos.z);
         if (soilType == null || soilType.getId() == null) return false;
-        String lowerId = soilType.getId().toLowerCase(Locale.ROOT);
-        if (!lowerId.contains("dirt") && !lowerId.contains("grass") && !lowerId.contains("soil")) return false;
+        if (!isTillableSoilOrTilled(soilType.getId())) {
+            return false;
+        }
 
-        // Spot for sapling (y+1) can be air or soft replaceable foliage
+        // Spot for sapling (y+1) can be air or soft replaceable foliage (never replace solid blocks!)
         BlockType plantSpot = chunk.getBlockType(soilPos.x, soilY + 1, soilPos.z);
         if (plantSpot != null && !isAirOrFoliage(plantSpot.getId())) {
             return false;
@@ -245,22 +275,36 @@ public class TerraformSystem {
 
     /**
      * Tills the block at soilPos, turning it into Soil_Dirt_Tilled and tagging it with TilledByFarmComponent.
+     * STRICT SAFETY RULE: Never replace water, stone, paths, bricks, wood, or non-soil blocks!
      */
     public static boolean tillSoil(World world, Vector3i soilPos, UUID farmId) {
         if (world == null || soilPos == null || farmId == null) return false;
+
+        // Never till or replace water!
+        if (isWaterAt(world, soilPos.x, soilPos.y, soilPos.z)) {
+            return false;
+        }
 
         long chunkIdx = ChunkUtil.indexChunkFromBlock(soilPos.x, soilPos.z);
         WorldChunk chunk = world.getChunkIfLoaded(chunkIdx);
         if (chunk == null) return false;
 
         BlockType current = chunk.getBlockType(soilPos.x, soilPos.y, soilPos.z);
-        if (current != null && current.getId() != null && current.getId().equalsIgnoreCase(TILLED_SOIL_BLOCK)) {
-            // Already tilled, ensure ownership
+        if (current == null || current.getId() == null) return false;
+
+        String currentId = current.getId();
+        // If already tilled, no block substitution needed!
+        if (currentId.equalsIgnoreCase(TILLED_SOIL_BLOCK) || currentId.toLowerCase(Locale.ROOT).contains("tilled")) {
             AutoFarmRegistry.registerTilledSoil(soilPos, new TilledByFarmComponent(farmId, soilPos));
             return true;
         }
 
-        // Modify world block
+        // Only allow tilling genuine dirt or grass! Never replace any other block!
+        if (!isTillableSoilOrTilled(currentId)) {
+            return false;
+        }
+
+        // Modify world block from dirt/grass to tilled soil
         boolean success = chunk.setBlock(soilPos.x, soilPos.y, soilPos.z, TILLED_SOIL_BLOCK);
         if (success) {
             AutoFarmRegistry.registerTilledSoil(soilPos, new TilledByFarmComponent(farmId, soilPos));
@@ -269,6 +313,54 @@ public class TerraformSystem {
         }
 
         return false;
+    }
+
+    public static boolean isTillableSoilOrTilled(String id) {
+        if (id == null) return false;
+        String lower = id.toLowerCase(Locale.ROOT);
+
+        // Explicitly protect non-soil blocks (paths, gravel, sand, clay, bricks, stone, wood, etc.)
+        if (isProtectedNonSoilBlock(lower)) {
+            return false;
+        }
+
+        // Must be tilled soil, dirt, or grass
+        if (lower.contains("tilled")) {
+            return true;
+        }
+        if (lower.contains("dirt") || lower.contains("grass")) {
+            return true;
+        }
+        return lower.equals("soil");
+    }
+
+    public static boolean isProtectedNonSoilBlock(String lowerId) {
+        if (lowerId == null) return false;
+        return lowerId.contains("path")
+                || lowerId.contains("gravel")
+                || lowerId.contains("sand")
+                || lowerId.contains("clay")
+                || lowerId.contains("brick")
+                || lowerId.contains("stone")
+                || lowerId.contains("cobble")
+                || lowerId.contains("rock")
+                || lowerId.contains("snow")
+                || lowerId.contains("ice")
+                || lowerId.contains("hive")
+                || lowerId.contains("ash")
+                || lowerId.contains("stair")
+                || lowerId.contains("half")
+                || lowerId.contains("quarter")
+                || lowerId.contains("beam")
+                || lowerId.contains("wall")
+                || lowerId.contains("fence")
+                || lowerId.contains("wood")
+                || lowerId.contains("plank")
+                || lowerId.contains("glass")
+                || lowerId.contains("metal")
+                || lowerId.contains("iron")
+                || lowerId.contains("copper")
+                || lowerId.contains("gold");
     }
 
     public static boolean isAir(String blockId) {

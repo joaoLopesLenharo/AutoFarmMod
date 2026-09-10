@@ -386,4 +386,42 @@ public class AutoFarmTest {
         Vector3i farSoil = new Vector3i(3, 59, 3);
         Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleForTree(null, farSoil, farmId, farmPos, chestPos));
     }
+
+    @Test
+    public void testStrictSoilHeightAndNonSoilProtection() {
+        // Soil must strictly be 1 block below the machine (farmPos.y - 1)
+        Vector3i farmPos = new Vector3i(10, 60, 10);
+        Vector3i sameLevelSoil = new Vector3i(11, 60, 10); // Same level as machine: MUST BE REJECTED
+        Vector3i aboveSoil = new Vector3i(11, 61, 10);     // Above machine: MUST BE REJECTED
+        Vector3i deepSoil = new Vector3i(11, 58, 10);      // 2 blocks below: MUST BE REJECTED
+
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleSoil(null, sameLevelSoil, 4, UUID.randomUUID(), farmPos));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleSoil(null, aboveSoil, 4, UUID.randomUUID(), farmPos));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleSoil(null, deepSoil, 4, UUID.randomUUID(), farmPos));
+
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleForTree(null, sameLevelSoil, UUID.randomUUID(), farmPos, null));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleForTree(null, aboveSoil, UUID.randomUUID(), farmPos, null));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isEligibleForTree(null, deepSoil, UUID.randomUUID(), farmPos, null));
+
+        // Non-soil blocks must NEVER be considered tillable or replaced
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isProtectedNonSoilBlock("soil_pathway"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isProtectedNonSoilBlock("soil_gravel"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isProtectedNonSoilBlock("soil_clay_raw_brick"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isProtectedNonSoilBlock("soil_clay_smooth_red_stairs"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isProtectedNonSoilBlock("soil_sand"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isProtectedNonSoilBlock("stone_cobble"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isProtectedNonSoilBlock("wood_oak_planks"));
+
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("soil_pathway"));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("soil_clay_raw_brick"));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("soil_sand"));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("stone_cobble"));
+        Assertions.assertFalse(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("wood_oak_planks"));
+
+        // Only genuine dirt, grass, or tilled soil is accepted
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("Soil_Dirt"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("Soil_Grass"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("Soil_Dirt_Tilled"));
+        Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("Soil_Grass_Sunny"));
+    }
 }

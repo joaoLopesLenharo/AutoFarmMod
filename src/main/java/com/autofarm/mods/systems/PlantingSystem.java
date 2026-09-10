@@ -6,6 +6,7 @@ import com.autofarm.mods.catalog.PlantSpecies;
 import com.autofarm.mods.components.AutoFarmBlockComponent;
 import com.autofarm.mods.components.AutoPlantedComponent;
 import com.hypixel.hytale.math.util.ChunkUtil;
+import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import org.joml.Vector3i;
@@ -81,6 +82,13 @@ public class PlantingSystem {
             return false;
         }
 
+        // Safety: ensure plant spot is air or replaceable foliage (NEVER replace existing solid blocks!)
+        BlockType currentSpot = chunk.getBlockType(plantPos.x, plantPos.y, plantPos.z);
+        if (currentSpot != null && !TerraformSystem.isAirOrFoliage(currentSpot.getId())) {
+            ChestLinkSystem.deposit(world, chestPos, new com.hypixel.hytale.server.core.inventory.ItemStack(seedItem, 1));
+            return false;
+        }
+
         String blockToPlace = species.getBlockId();
         boolean placed = chunk.setBlock(plantPos.x, plantPos.y, plantPos.z, blockToPlace);
         if (!placed) {
@@ -102,6 +110,7 @@ public class PlantingSystem {
 
     /**
      * Scans and executes planting actions for crops and trees.
+     * STRICT RULE: Must plant in the same area as the water puddle, ALWAYS 1 block below the machine.
      * Capped at maximum water puddle irrigation radius (4 blocks).
      */
     public static int processPlantingCycle(World world, AutoFarmBlockComponent farm, long currentTick, int maxBatch) {
@@ -130,9 +139,13 @@ public class PlantingSystem {
         int plantedCount = 0;
 
         Vector3i origin = farm.getPosition();
-        // Maximum space around is strictly limited to what the water puddle underneath can irrigate (4 blocks)
+        // Soil is ALWAYS strictly 1 block below the machine (same layer as the water puddle).
+        // Plants grow at origin.y (the machine's floor level).
+        int soilY = origin.y - 1;
+        int plantY = origin.y;
+
+        // Maximum horizontal radius around machine base (capped at 4 blocks for water irrigation)
         int range = Math.min(farm.getRange() > 0 ? farm.getRange() : 4, 4);
-        int vRange = Math.min(farm.getVerticalRange() > 0 ? farm.getVerticalRange() : 4, 4);
         int waterProximity = farm.getWaterProximityMax();
 
         for (int r = 1; r <= range && plantedCount < remainingAllowance; r++) {
@@ -142,28 +155,27 @@ public class PlantingSystem {
                         continue;
                     }
 
-                    for (int dy = -vRange; dy <= vRange && plantedCount < remainingAllowance; dy++) {
-                        int x = origin.x + dx;
-                        int y = origin.y + dy;
-                        int z = origin.z + dz;
+                    int x = origin.x + dx;
+                    int z = origin.z + dz;
 
-                        if (x == origin.x && y == origin.y && z == origin.z) continue;
-                        if (x == chestPos.x && y == chestPos.y && z == chestPos.z) continue;
+                    // Skip the machine column and chest column
+                    if (x == origin.x && z == origin.z) continue;
+                    if (chestPos != null && x == chestPos.x && z == chestPos.z) continue;
 
-                        Vector3i soilCandidate = new Vector3i(x, y, z);
-                        Vector3i plantPos = new Vector3i(x, y + 1, z);
-                        if (plantPos.equals(origin) || plantPos.equals(chestPos)) continue;
-                        
-                        // Check eligibility for crops (requires hasWater + valid soil within radius)
-                        // Trees do NOT require water (trees grow on dirt/grass with proper spacing and vertical clearance)
-                        boolean eligibleCrop = hasWater && TerraformSystem.isEligibleSoil(world, soilCandidate, waterProximity, farmId, origin);
-                        boolean eligibleTree = TerraformSystem.isEligibleForTree(world, soilCandidate, farmId, origin, chestPos);
+                    Vector3i soilCandidate = new Vector3i(x, soilY, z);
+                    Vector3i plantPos = new Vector3i(x, plantY, z);
 
-                        if (eligibleCrop || eligibleTree) {
-                            boolean success = plantCrop(world, soilCandidate, farmId, origin, chestPos, currentTick, eligibleCrop, eligibleTree);
-                            if (success) {
-                                plantedCount++;
-                            }
+                    if (plantPos.equals(origin) || (chestPos != null && plantPos.equals(chestPos))) continue;
+                    
+                    // Check eligibility for crops (requires hasWater + valid soil within radius)
+                    // Trees do NOT require water (trees grow on dirt/grass with proper spacing and vertical clearance)
+                    boolean eligibleCrop = hasWater && TerraformSystem.isEligibleSoil(world, soilCandidate, waterProximity, farmId, origin);
+                    boolean eligibleTree = TerraformSystem.isEligibleForTree(world, soilCandidate, farmId, origin, chestPos);
+
+                    if (eligibleCrop || eligibleTree) {
+                        boolean success = plantCrop(world, soilCandidate, farmId, origin, chestPos, currentTick, eligibleCrop, eligibleTree);
+                        if (success) {
+                            plantedCount++;
                         }
                     }
                 }
