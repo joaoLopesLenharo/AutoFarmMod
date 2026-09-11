@@ -62,12 +62,12 @@
     },
     "Textures": [
       {
-        "Up": "BlockTextures/Soil_Grass.png",
-        "Down": "BlockTextures/Soil_Dirt.png",
-        "North": "BlockTextures/Wood_Oak_Trunk_Full.png",
-        "South": "BlockTextures/Wood_Oak_Trunk_Full.png",
-        "East": "BlockTextures/Wood_Oak_Trunk_Full.png",
-        "West": "BlockTextures/Wood_Oak_Trunk_Full.png"
+        "Up": "BlockTextures/Wood_Trunk_Oak_Top.png",
+        "Down": "BlockTextures/Wood_Amber_Trunk_Full.png",
+        "North": "BlockTextures/Wood_Trunk_Oak_Full.png",
+        "South": "BlockTextures/Wood_Trunk_Oak_Full.png",
+        "East": "BlockTextures/Wood_Trunk_Oak_Full.png",
+        "West": "BlockTextures/Wood_Trunk_Oak_Full.png"
       }
     ],
     "Supporting": {
