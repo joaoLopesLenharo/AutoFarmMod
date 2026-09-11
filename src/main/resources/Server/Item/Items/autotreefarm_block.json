@@ -21,7 +21,7 @@
         "Quantity": 2
       },
       {
-        "ItemId": "Tool_Axe_Iron",
+        "ItemId": "Weapon_Axe_Iron",
         "Quantity": 1
       }
     ],
@@ -30,14 +30,13 @@
       {
         "Type": "Crafting",
         "Categories": [
-          "Workbench_Crafting",
-          "Tools"
+          "Workbench_Crafting"
         ],
         "Id": "Workbench"
       }
     ]
   },
-  "Icon": "Icons/ItemsGenerated/autofarm_block.png",
+  "Icon": "Icons/ItemsGenerated/autotreefarm_block.png",
   "IconProperties": {
     "Scale": 0.6,
     "Rotation": [
@@ -104,6 +103,10 @@
     },
     "Flags": {
       "IsUsable": true
+    },
+    "InteractionHint": "server.interactionHints.generic",
+    "Interactions": {
+      "Use": "AutoTreeFarm_Config"
     }
   },
   "TranslationProperties": {

@@ -30,8 +30,7 @@
       {
         "Type": "Crafting",
         "Categories": [
-          "Workbench_Crafting",
-          "Tools"
+          "Workbench_Crafting"
         ],
         "Id": "Workbench"
       }
@@ -104,6 +103,10 @@
     },
     "Flags": {
       "IsUsable": true
+    },
+    "InteractionHint": "server.interactionHints.generic",
+    "Interactions": {
+      "Use": "AutoFarm_Config"
     }
   },
   "TranslationProperties": {
