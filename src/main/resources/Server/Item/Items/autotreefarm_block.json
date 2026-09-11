@@ -1,0 +1,117 @@
+{
+  "PlayerAnimationsId": "Block",
+  "Categories": [
+    "Furniture.Workbenches",
+    "Utility"
+  ],
+  "Set": "",
+  "Recipe": {
+    "TimeSeconds": 3.0,
+    "Input": [
+      {
+        "ResourceTypeId": "Wood_Trunk",
+        "Quantity": 4
+      },
+      {
+        "ItemId": "Ingredient_Bar_Iron",
+        "Quantity": 4
+      },
+      {
+        "ItemId": "Ingredient_Bar_Copper",
+        "Quantity": 2
+      },
+      {
+        "ItemId": "Tool_Axe_Iron",
+        "Quantity": 1
+      }
+    ],
+    "OutputQuantity": 1,
+    "BenchRequirement": [
+      {
+        "Type": "Crafting",
+        "Categories": [
+          "Workbench_Crafting",
+          "Tools"
+        ],
+        "Id": "Workbench"
+      }
+    ]
+  },
+  "Icon": "Icons/ItemsGenerated/autofarm_block.png",
+  "IconProperties": {
+    "Scale": 0.6,
+    "Rotation": [
+      22.5,
+      45,
+      22.5
+    ],
+    "Translation": [
+      0,
+      -10
+    ]
+  },
+  "BlockType": {
+    "components": {
+      "hytale:block_entity": {}
+    },
+    "DrawType": "Cube",
+    "Material": "Solid",
+    "BlockSoundSetId": "Wood",
+    "Gathering": {
+      "Soft": {}
+    },
+    "Textures": [
+      {
+        "Up": "BlockTextures/Soil_Grass.png",
+        "Down": "BlockTextures/Soil_Dirt.png",
+        "North": "BlockTextures/Wood_Oak_Trunk_Full.png",
+        "South": "BlockTextures/Wood_Oak_Trunk_Full.png",
+        "East": "BlockTextures/Wood_Oak_Trunk_Full.png",
+        "West": "BlockTextures/Wood_Oak_Trunk_Full.png"
+      }
+    ],
+    "Supporting": {
+      "Up": [
+        {
+          "FaceType": "Full"
+        }
+      ],
+      "Down": [
+        {
+          "FaceType": "Full"
+        }
+      ],
+      "North": [
+        {
+          "FaceType": "Full"
+        }
+      ],
+      "South": [
+        {
+          "FaceType": "Full"
+        }
+      ],
+      "East": [
+        {
+          "FaceType": "Full"
+        }
+      ],
+      "West": [
+        {
+          "FaceType": "Full"
+        }
+      ]
+    },
+    "Flags": {
+      "IsUsable": true
+    },
+    "InteractionHint": "server.interactionHints.generic",
+    "Interactions": {
+      "Use": "AutoTreeFarm_Config"
+    }
+  },
+  "TranslationProperties": {
+    "Name": "items.autotreefarm_block.name",
+    "Description": "items.autotreefarm_block.description"
+  }
+}

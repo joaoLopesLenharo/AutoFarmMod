@@ -98,8 +98,36 @@ public class AutoFarmRegistry {
         }
     }
 
+    private static final Map<UUID, com.autofarm.mods.components.AutoTreeFarmBlockComponent> ACTIVE_TREE_FARMS = new ConcurrentHashMap<>();
+
+    public static void registerTreeFarm(com.autofarm.mods.components.AutoTreeFarmBlockComponent farm) {
+        if (farm != null && farm.getFarmId() != null) {
+            ACTIVE_TREE_FARMS.put(farm.getFarmId(), farm);
+        }
+    }
+
+    public static void unregisterTreeFarm(UUID farmId) {
+        if (farmId == null) return;
+        ACTIVE_TREE_FARMS.remove(farmId);
+    }
+
+    public static com.autofarm.mods.components.AutoTreeFarmBlockComponent findTreeFarmAt(Vector3i pos) {
+        if (pos == null) return null;
+        for (com.autofarm.mods.components.AutoTreeFarmBlockComponent farm : ACTIVE_TREE_FARMS.values()) {
+            if (pos.equals(farm.getPosition())) {
+                return farm;
+            }
+        }
+        return null;
+    }
+
+    public static Collection<com.autofarm.mods.components.AutoTreeFarmBlockComponent> getActiveTreeFarms() {
+        return ACTIVE_TREE_FARMS.values();
+    }
+
     public static void clearAll() {
         ACTIVE_FARMS.clear();
+        ACTIVE_TREE_FARMS.clear();
         ACTIVE_CROPS.clear();
         TILLED_SOIL.clear();
     }

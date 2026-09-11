@@ -1,2 +1,5 @@
 items.autofarm_block.name = AutoFarm Block
 items.autofarm_block.description = An autonomous farming machine that automatically scans, tills, plants, and harvests crops within range.
+items.autotreefarm_block.name = Auto Tree Farm
+items.autotreefarm_block.description = An automated tree cultivation machine. Requires a dirt block underneath and an adjacent chest with tree saplings to periodically generate wood logs and forestry drops.
+

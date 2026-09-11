@@ -30,12 +30,22 @@ public class AutoFarmDestructionHandler extends EntityEventSystem<EntityStore, B
         }
 
         String blockId = event.getBlockType().getId();
-        if (blockId != null && blockId.toLowerCase().contains("autofarm_block")) {
-            Vector3i targetPos = event.getTargetBlock();
-            AutoFarmBlockComponent farm = AutoFarmMod.findFarmAt(targetPos);
-            if (farm != null) {
-                AutoFarmMod.unregisterFarm(farm.getFarmId());
-                System.out.println("[AutoFarm] AutoFarm Block destroyed at " + targetPos + " (FarmId: " + farm.getFarmId() + "). Unlinked all associated farm metadata.");
+        if (blockId != null) {
+            String lower = blockId.toLowerCase();
+            if (lower.contains("autotreefarm_block")) {
+                Vector3i targetPos = event.getTargetBlock();
+                com.autofarm.mods.components.AutoTreeFarmBlockComponent farm = AutoFarmMod.findTreeFarmAt(targetPos);
+                if (farm != null) {
+                    AutoFarmMod.unregisterTreeFarm(farm.getFarmId());
+                    System.out.println("[AutoTreeFarm] AutoTreeFarm Block destroyed at " + targetPos + " (FarmId: " + farm.getFarmId() + ").");
+                }
+            } else if (lower.contains("autofarm_block")) {
+                Vector3i targetPos = event.getTargetBlock();
+                AutoFarmBlockComponent farm = AutoFarmMod.findFarmAt(targetPos);
+                if (farm != null) {
+                    AutoFarmMod.unregisterFarm(farm.getFarmId());
+                    System.out.println("[AutoFarm] AutoFarm Block destroyed at " + targetPos + " (FarmId: " + farm.getFarmId() + "). Unlinked all associated farm metadata.");
+                }
             }
         }
     }

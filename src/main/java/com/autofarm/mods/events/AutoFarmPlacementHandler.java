@@ -34,22 +34,42 @@ public class AutoFarmPlacementHandler extends EntityEventSystem<EntityStore, Pla
         }
 
         String itemId = event.getItemInHand().getItemId();
-        if (itemId != null && itemId.toLowerCase().contains("autofarm_block")) {
-            Vector3i targetPos = new Vector3i(event.getTargetBlock());
-            UUID farmId = UUID.randomUUID();
+        if (itemId != null) {
+            String lower = itemId.toLowerCase();
+            if (lower.contains("autotreefarm_block")) {
+                Vector3i targetPos = new Vector3i(event.getTargetBlock());
+                UUID farmId = UUID.randomUUID();
 
-            AutoFarmBlockComponent comp = new AutoFarmBlockComponent(farmId, targetPos);
-            Holder<EntityStore> holder = store.getRegistry().newHolder();
-            holder.addComponent(AutoFarmMod.AUTO_FARM_COMPONENT_TYPE, comp);
+                com.autofarm.mods.components.AutoTreeFarmBlockComponent comp = 
+                        new com.autofarm.mods.components.AutoTreeFarmBlockComponent(farmId, targetPos);
+                Holder<EntityStore> holder = store.getRegistry().newHolder();
+                holder.addComponent(AutoFarmMod.AUTO_TREE_FARM_COMPONENT_TYPE, comp);
 
-            if (buffer != null) {
-                buffer.addEntity(holder, AddReason.SPAWN);
-            } else {
-                store.addEntity(holder, AddReason.SPAWN);
+                if (buffer != null) {
+                    buffer.addEntity(holder, AddReason.SPAWN);
+                } else {
+                    store.addEntity(holder, AddReason.SPAWN);
+                }
+                AutoFarmMod.registerTreeFarm(comp);
+
+                System.out.println("[AutoTreeFarm] AutoTreeFarm Block placed at " + targetPos + " | FarmId: " + farmId);
+            } else if (lower.contains("autofarm_block")) {
+                Vector3i targetPos = new Vector3i(event.getTargetBlock());
+                UUID farmId = UUID.randomUUID();
+
+                AutoFarmBlockComponent comp = new AutoFarmBlockComponent(farmId, targetPos);
+                Holder<EntityStore> holder = store.getRegistry().newHolder();
+                holder.addComponent(AutoFarmMod.AUTO_FARM_COMPONENT_TYPE, comp);
+
+                if (buffer != null) {
+                    buffer.addEntity(holder, AddReason.SPAWN);
+                } else {
+                    store.addEntity(holder, AddReason.SPAWN);
+                }
+                AutoFarmMod.registerFarm(comp);
+
+                System.out.println("[AutoFarm] AutoFarm Block placed at " + targetPos + " | FarmId: " + farmId);
             }
-            AutoFarmMod.registerFarm(comp);
-
-            System.out.println("[AutoFarm] AutoFarm Block placed at " + targetPos + " | FarmId: " + farmId);
         }
     }
 }

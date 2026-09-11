@@ -424,4 +424,53 @@ public class AutoFarmTest {
         Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("Soil_Dirt_Tilled"));
         Assertions.assertTrue(com.autofarm.mods.systems.TerraformSystem.isTillableSoilOrTilled("Soil_Grass_Sunny"));
     }
+
+    @Test
+    public void testTreeFarmComponentAndRegistry() {
+        UUID farmId = UUID.randomUUID();
+        Vector3i pos = new Vector3i(15, 64, 25);
+        com.autofarm.mods.components.AutoTreeFarmBlockComponent farm = 
+                new com.autofarm.mods.components.AutoTreeFarmBlockComponent(farmId, pos);
+
+        Assertions.assertEquals(farmId, farm.getFarmId());
+        Assertions.assertEquals(pos, farm.getPosition());
+        Assertions.assertEquals("AUTO", farm.getSelectedChestFace());
+        Assertions.assertNull(farm.getSaplingItemId());
+        Assertions.assertEquals(300L, farm.getProductionIntervalTicks());
+        Assertions.assertFalse(farm.isHasDirtUnderneath());
+
+        farm.setSaplingItemId("Plant_Sapling_Birch");
+        farm.setSelectedChestFace("NORTH");
+        farm.setHasDirtUnderneath(true);
+
+        // Test cloning
+        com.autofarm.mods.components.AutoTreeFarmBlockComponent clone = farm.clone();
+        Assertions.assertEquals(farm.getFarmId(), clone.getFarmId());
+        Assertions.assertEquals(farm.getPosition(), clone.getPosition());
+        Assertions.assertEquals("Plant_Sapling_Birch", clone.getSaplingItemId());
+        Assertions.assertEquals("NORTH", clone.getSelectedChestFace());
+        Assertions.assertTrue(clone.isHasDirtUnderneath());
+
+        // Test registry
+        AutoFarmRegistry.registerTreeFarm(farm);
+        Assertions.assertEquals(farm, AutoFarmRegistry.findTreeFarmAt(pos));
+        Assertions.assertEquals(1, AutoFarmRegistry.getActiveTreeFarms().size());
+
+        AutoFarmRegistry.unregisterTreeFarm(farmId);
+        Assertions.assertNull(AutoFarmRegistry.findTreeFarmAt(pos));
+        Assertions.assertEquals(0, AutoFarmRegistry.getActiveTreeFarms().size());
+    }
+
+    @Test
+    public void testTreeFarmSpeciesDropGeneration() {
+        com.autofarm.mods.catalog.PlantSpecies oak = com.autofarm.mods.catalog.PlantCatalog.resolve("Plant_Sapling_Oak");
+        Assertions.assertNotNull(oak);
+        Assertions.assertTrue(oak.isTree());
+        Assertions.assertEquals("Wood_Oak_Trunk", oak.getTreeWoodTrunkId());
+
+        com.autofarm.mods.catalog.PlantSpecies birch = com.autofarm.mods.catalog.PlantCatalog.resolve("Plant_Sapling_Birch");
+        Assertions.assertNotNull(birch);
+        Assertions.assertTrue(birch.isTree());
+        Assertions.assertEquals("Wood_Birch_Trunk", birch.getTreeWoodTrunkId());
+    }
 }

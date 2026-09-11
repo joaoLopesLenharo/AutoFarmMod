@@ -37,16 +37,42 @@ Mod de automação agrícola e silvícola autônoma para **Hytale**. Introduz o 
 
 ---
 
-## 🔨 Receita de Fabricação (Crafting)
+## 🌲 Bloco Auto Tree Farm (Farm Dedicada de Árvores)
 
-Fabricado na Bancada de Trabalho (**Workbench**):
+Para automação compacta e contínua de madeira sem necessidade de espaço aberto para copas de árvores:
 
+- **Requisito de Solo**: Deve ser colocado diretamente sobre um **bloco de terra** (`Dirt`, `Grass_Dirt`, etc.) logo abaixo dele ($y - 1$).
+- **Alimentação por Muda**: Coloque mudas de árvore (`Plant_Sapling_*`) no baú conectado. O bloco consome a muda e inicia o ciclo de cultivo.
+- **Produção Periódica**: A cada ciclo de tempo configurado, o bloco gera uma porção dos drops correspondentes à espécie da árvore cultivada:
+  - **Madeira/Troncos** da espécie da muda (`Wood_Trunk_*`)
+  - **Gravetos** (`Ingredient_Stick`)
+  - **Seiva** (`Ingredient_Tree_Sap`)
+  - **Casca** (`Ingredient_Bark`)
+  - **Fibras** (`Ingredient_Fibre`)
+  - **Chance de Muda Extra** para ciclo sustentável
+- **Interface [F]**: Pressione **[F]** no bloco para monitorar a presença de terra, muda ativa e configurar a face do baú.
+
+---
+
+## 🔨 Receitas de Fabricação (Crafting)
+
+Fabricados na Bancada de Trabalho (**Workbench**):
+
+### AutoFarm (Agricultura e Silvicultura de Campo)
 | Ingrediente | Quantidade |
 | :--- | :---: |
 | Tronco de Madeira (`Wood_Trunk`) | 4 |
 | Barra de Ferro (`Ingredient_Bar_Iron`) | 4 |
 | Barra de Cobre (`Ingredient_Bar_Copper`) | 2 |
 | Enxada de Ferro (`Tool_Hoe_Iron`) | 1 |
+
+### Auto Tree Farm (Farm Compacta de Madeira)
+| Ingrediente | Quantidade |
+| :--- | :---: |
+| Tronco de Madeira (`Wood_Trunk`) | 6 |
+| Barra de Ferro (`Ingredient_Bar_Iron`) | 4 |
+| Barra de Cobre (`Ingredient_Bar_Copper`) | 2 |
+| Machado de Ferro (`Tool_Axe_Iron`) | 1 |
 
 ---
 

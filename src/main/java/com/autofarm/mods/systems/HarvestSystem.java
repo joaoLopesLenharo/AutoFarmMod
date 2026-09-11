@@ -131,54 +131,62 @@ public class HarvestSystem {
 
         PlantSpecies species = PlantCatalog.resolve(plant.getPlantType());
 
-        // 1. Tree maturity: Trees have distinct growth stages calculated in in-game days.
-        // A tree MUST only be cut down in its final (last) growth stage.
+        // 1. Tree maturity: Trees have distinct growth stages.
+        // A tree is cut down when fully grown (trunk height >= 3 and leaves canopy present).
         if (species != null && species.isTree()) {
             return isTreeMature(world, chunk, plantPos, plant, species);
         }
 
-        // 2. Crop maturity via Hytale Native Block Gathering config
-        // In Hytale, crops ONLY have a non-null Gathering.Harvest in their final (mature) stage.
-        // Stage 0 (seeds), Stage 1, Stage 2, and Stage 3 do not have HarvestingDropType.
+        // 2. Crop maturity: Check both chunk.getBlock state variant and currentType for Gathering.Harvest
+        int blockInt = chunk.getBlock(plantPos.x, plantPos.y, plantPos.z);
+        BlockType stateType = null;
+        try {
+            stateType = BlockType.getAssetMap().getAsset(blockInt);
+        } catch (Throwable ignored) {}
+
+        if (stateType != null && stateType.getGathering() != null && stateType.getGathering().getHarvest() != null) {
+            return true;
+        }
+
         if (currentType.getGathering() != null && currentType.getGathering().getHarvest() != null) {
             return true;
         }
 
-        // 3. Crop maturity: Native ECS FarmingBlock component
-        Holder<ChunkStore> holder = chunk.getBlockComponentHolder(plantPos.x, plantPos.y, plantPos.z);
-        if (holder != null) {
-            FarmingBlock farming = holder.getComponent(FarmingBlock.getComponentType());
-            if (farming != null) {
-                String stage = farming.getCurrentStageSet();
-                if (stage != null && (stage.equalsIgnoreCase("StageFinal") || stage.equalsIgnoreCase("Harvested"))) {
-                    return true;
-                }
-                int finalStage = getFinalStageIndex(species != null ? species.getBlockId() : currentType.getId());
-                if (farming.getGrowthProgress() >= (float) finalStage) {
-                    return true;
-                }
-            }
-        }
-
-        // 4. BlockType name convention (e.g. Plant_Crop_Wheat_StageFinal)
-        String typeId = currentType.getId();
-        if (typeId != null) {
-            String lower = typeId.toLowerCase(Locale.ROOT);
-            if (lower.contains("stagefinal") || lower.contains("mature")) {
+        // 3. Check state name or block ID conventions
+        if (stateType != null && stateType.getId() != null) {
+            String lower = stateType.getId().toLowerCase(Locale.ROOT);
+            if (lower.contains("stagefinal") || lower.contains("harvest") || lower.contains("stage_4") || lower.contains("stage4") || lower.contains("mature")) {
                 return true;
             }
         }
 
+        String typeId = currentType.getId();
+        if (typeId != null) {
+            String lower = typeId.toLowerCase(Locale.ROOT);
+            if (lower.contains("stagefinal") || lower.contains("harvest") || lower.contains("stage_4") || lower.contains("stage4") || lower.contains("mature")) {
+                return true;
+            }
+        }
+
+        // 4. Crop maturity: Native ECS FarmingBlock component
+        Holder<ChunkStore> holder = chunk.getBlockComponentHolder(plantPos.x, plantPos.y, plantPos.z);
+        if (holder != null) {
+            FarmingBlock farming = holder.getComponent(FarmingBlock.getComponentType());
+            if (farming != null) {
+                int finalStage = getFinalStageIndex(species != null ? species.getBlockId() : currentType.getId());
+                if (farming.getGrowthProgress() >= (float) (finalStage - 0.2f)) {
+                    return true;
+                }
+            }
+        }
+
         // The crop is still growing naturally (Seed / Stage 1 / Stage 2 / Stage 3).
-        // It must NOT be harvested until it reaches the final stage!
         return false;
     }
 
     /**
-     * Checks if a tree has reached its final growth stage.
-     * Trees have multiple growth stages (sapling -> intermediate stages -> final mature tree).
-     * Hytale calculates tree growth in in-game days.
-     * Only the final growth stage may be cut down.
+     * Checks if a tree has reached its mature growth stage.
+     * Verified by physical tree structure: trunk wood >= 3 blocks high and leaves canopy above.
      */
     public static boolean isTreeMature(World world, WorldChunk chunk, Vector3i plantPos, 
                                        AutoPlantedComponent plant, PlantSpecies species) {
@@ -198,39 +206,20 @@ public class HarvestSystem {
             return false;
         }
 
-        AutoFarmConfig config = AutoFarmConfig.get();
         String saplingBlockId = species.getBlockId();
         int finalStage = getFinalStageIndex(saplingBlockId);
 
-        // 1. Check ECS FarmingBlock component on root block
+        // 1. Check ECS FarmingBlock component on root block if available
         Holder<ChunkStore> holder = chunk.getBlockComponentHolder(plantPos.x, plantPos.y, plantPos.z);
         if (holder != null) {
             FarmingBlock farming = holder.getComponent(FarmingBlock.getComponentType());
-            if (farming != null) {
-                float growthProgress = farming.getGrowthProgress();
-                if (growthProgress < (float) finalStage) {
-                    // Tree is in an intermediate growth stage (e.g. Stage 1, 2, 3 or 4 of 5)
-                    return false;
-                }
-                // Reached or exceeded final stage
+            if (farming != null && farming.getGrowthProgress() >= (float) (finalStage - 0.2f)) {
                 return true;
             }
         }
 
-        // 2. In-game Days Elapsed Check (Hytale calculates tree growth in in-game days)
-        double currentDay = getInGameDay(world);
-        double plantedDay = plant.getPlantedDay();
-        double reqDays = getRequiredTreeGrowthDays(saplingBlockId);
-        if (plantedDay > 0 && currentDay > 0) {
-            double elapsedDays = currentDay - plantedDay;
-            if (elapsedDays < reqDays) {
-                // Not enough in-game days have passed for the tree to complete all stages
-                return false;
-            }
-        }
-
-        // 3. Physical Tree Structure Verification in Chunk:
-        // Measure trunk height above ground (intermediate stages are only 1-3 blocks high)
+        // 2. Physical Tree Structure Verification in Chunk:
+        // Measure trunk height above ground (must be at least 3 blocks high)
         int trunkHeight = 0;
         boolean hasLeaves = false;
         for (int dy = 0; dy <= 24; dy++) {
@@ -251,8 +240,8 @@ public class HarvestSystem {
             }
         }
 
-        // A fully mature tree in Hytale has a trunk height >= treeMinTrunkHeight (default 5 blocks)
-        if (trunkHeight < config.treeMinTrunkHeight) {
+        // A mature tree in Hytale has trunk height >= 3 blocks
+        if (trunkHeight < 3) {
             return false;
         }
 
